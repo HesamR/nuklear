@@ -1,2 +1,2 @@
 # nuklear
-https://github.com/Immediate-Mode-UI/Nuklear
+zig wrapper for https://github.com/Immediate-Mode-UI/Nuklear
