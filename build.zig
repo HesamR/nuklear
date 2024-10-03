@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
     lib.linkLibC();
 
     lib.addCSourceFile(.{
-        .file = .{ .path = "c-src/nuklear.c" },
+        .file = b.path("c-src/nuklear.c"),
         .flags = &.{
             "-std=c99",
             "-fno-sanitize=undefined",
@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const module = b.addModule("main", .{
-        .root_source_file = .{ .path = "src/nuklear.zig" },
+        .root_source_file = b.path("src/nuklear.zig"),
     });
 
     module.linkLibrary(lib);

@@ -314,6 +314,7 @@ pub const ChartSlot = extern struct {
     count: c_int,
     last: Vec2,
     index: c_int,
+    show_markers: bool,
 };
 
 pub const Chart = extern struct {
@@ -485,7 +486,10 @@ pub const SymbolType = enum(c_uint) {
     triangle_right = 10,
     plus = 11,
     minus = 12,
-    max = 13,
+    triangle_up_outline = 13,
+    triangle_down_outline = 14,
+    triangle_left_outline = 15,
+    triangle_right_outline = 16,
 };
 
 pub const StyleSlider = extern struct {
@@ -515,6 +519,30 @@ pub const StyleSlider = extern struct {
     color_factor: f32,
     disabled_factor: f32,
 
+    userdata: Handle,
+    draw_begin: ?*const fn ([*c]CommandBuffer, Handle) callconv(.C) void,
+    draw_end: ?*const fn ([*c]CommandBuffer, Handle) callconv(.C) void,
+};
+
+pub const StyleKnob = extern struct {
+    normal: StyleItem,
+    hover: StyleItem,
+    active: StyleItem,
+    border_color: Color,
+    knob_normal: Color,
+    knob_hover: Color,
+    knob_active: Color,
+    knob_border_color: Color,
+    cursor_normal: Color,
+    cursor_hover: Color,
+    cursor_active: Color,
+    border: f32,
+    knob_border: f32,
+    padding: Vec2,
+    spacing: Vec2,
+    cursor_width: f32,
+    color_factor: f32,
+    disabled_factor: f32,
     userdata: Handle,
     draw_begin: ?*const fn ([*c]CommandBuffer, Handle) callconv(.C) void,
     draw_end: ?*const fn ([*c]CommandBuffer, Handle) callconv(.C) void,
@@ -631,6 +659,7 @@ pub const StyleChart = extern struct {
 
     color_factor: f32,
     disabled_factor: f32,
+    show_markers: bool,
 };
 
 pub const StyleTab = extern struct {
@@ -747,6 +776,7 @@ pub const Style = extern struct {
     checkbox: StyleToggle,
     selectable: StyleSelectable,
     slider: StyleSlider,
+    knob: StyleKnob,
     progress: StyleProgress,
     property: StyleProperty,
     edit: StyleEdit,
@@ -1232,6 +1262,10 @@ pub const StyleColors = enum(c_uint) {
     scrollbar_cursor_hover = 25,
     scrollbar_cursor_active = 26,
     tab_header = 27,
+    knob = 28,
+    knob_cursor = 29,
+    knob_cursor_hover = 30,
+    knob_cursor_active = 31,
 };
 
 pub const StyleCursor = enum(c_uint) {
@@ -1577,7 +1611,7 @@ pub const Context = extern struct {
     // initialization -------------------------------------------------------
     // ----------------------------------------------------------------------
 
-    pub fn init(allocator: *Allocator, font: ?*const UserFont) !Context {
+    pub fn init(allocator: *const Allocator, font: ?*const UserFont) !Context {
         var ctx: Context = undefined;
         if (nk_init(&ctx, allocator, font)) {
             return ctx;
@@ -2465,6 +2499,30 @@ pub const Context = extern struct {
         return nk_slider_int(self, min, val, max, step);
     }
 
+    extern fn nk_slide_float(*Context, min: f32, val: f32, max: f32, step: f32) f32;
+    extern fn nk_slide_int(*Context, min: c_int, val: c_int, max: c_int, step: c_int) c_int;
+    extern fn nk_slider_float(*Context, min: f32, val: *f32, max: f32, step: f32) bool;
+    extern fn nk_slider_int(*Context, min: c_int, val: *c_int, max: c_int, step: c_int) bool;
+
+    //------------------------------------------------------------------------
+    // Knobs -----------------------------------------------------------------
+    //------------------------------------------------------------------------
+
+    pub fn knobFloat(self: *Context, min: f32, val: *f32, max: f32, step: f32, zero_direction: Heading, dead_zone_degrees: f32) bool {
+        return nk_knob_float(self, min, val, max, step, zero_direction, dead_zone_degrees);
+    }
+
+    pub fn knobInt(self: *Context, min: c_int, val: *c_int, max: c_int, step: c_int, zero_direction: Heading, dead_zone_degrees: f32) bool {
+        return nk_knob_int(self, min, val, max, step, zero_direction, dead_zone_degrees);
+    }
+
+    extern fn nk_knob_float(*Context, min: f32, val: *f32, max: f32, step: f32, zero_direction: Heading, dead_zone_degrees: f32) bool;
+    extern fn nk_knob_int(*Context, min: c_int, val: *c_int, max: c_int, step: c_int, zero_direction: Heading, dead_zone_degrees: f32) bool;
+
+    //-----------------------------------------------------------------------
+    // Progress -------------------------------------------------------------
+    //-----------------------------------------------------------------------
+
     pub fn progress(self: *Context, cur: *usize, max: usize, modifyable: bool) bool {
         return nk_progress(self, cur, max, modifyable);
     }
@@ -2472,11 +2530,6 @@ pub const Context = extern struct {
     pub fn prog(self: *Context, cur: usize, max: usize, modifyable: bool) usize {
         return nk_prog(self, cur, max, modifyable);
     }
-
-    extern fn nk_slide_float(*Context, min: f32, val: f32, max: f32, step: f32) f32;
-    extern fn nk_slide_int(*Context, min: c_int, val: c_int, max: c_int, step: c_int) c_int;
-    extern fn nk_slider_float(*Context, min: f32, val: *f32, max: f32, step: f32) bool;
-    extern fn nk_slider_int(*Context, min: c_int, val: *c_int, max: c_int, step: c_int) bool;
 
     extern fn nk_progress(*Context, cur: *usize, max: usize, modifyable: bool) bool;
     extern fn nk_prog(*Context, cur: usize, max: usize, modifyable: bool) usize;
@@ -3086,7 +3139,7 @@ pub const FontAtlas = extern struct {
         height: u32,
     };
 
-    pub fn init(allocator: *Allocator) FontAtlas {
+    pub fn init(allocator: *const Allocator) FontAtlas {
         var ret: FontAtlas = undefined;
         nk_font_atlas_init(&ret, allocator);
         return ret;
